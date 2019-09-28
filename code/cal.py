@@ -54,7 +54,7 @@ criterion = nn.CrossEntropyLoss()
 
 
 def test(nnName, dataName, CUDA_DEVICE, epsilon, temperature):
-    net1 = torch.load("../../models/{}.pth".format(nnName))
+    net1 = torch.load("../../model/{}.pth".format(nnName))
     optimizer1 = optim.SGD(net1.parameters(), lr=0, momentum=0)
     net1.cuda(CUDA_DEVICE)
 
