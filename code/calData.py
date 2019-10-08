@@ -57,7 +57,8 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
         maxIndexTemp = np.argmax(nnOutputs)
-        labels = Variable(torch.LongTensor([maxIndexTemp]).cuda(CUDA_DEVICE))
+        labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
+        # labels = torch.from_numpy(maxIndexTemp)
         loss = criterion(outputs, labels)
         loss.backward()
 

@@ -30,8 +30,10 @@ Wide ResNet     |  3.71       | 19.86
 
 ### Dependencies
 
+* Python 3.5.6
 * CUDA 8.0
-* PyTorch
+* PyTorch 0.3.1
+* TorchVision 0.1.6
 * Anaconda2 or 3
 * At least **three** GPU
 
