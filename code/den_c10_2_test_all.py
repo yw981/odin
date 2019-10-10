@@ -42,11 +42,8 @@ def main():
     batch_size = 64
     use_cuda = torch.cuda.is_available()
     torch.manual_seed(1234)
-    epochs = 2
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-
-    model = model = torch.load('../../model/densenet10.pth')
+    model = torch.load('../../model/densenet10.pth')
     # model.load_state_dict(torch.load('model/lenet_mnist_model.pth'))
     affine_params = np.load('../result/' + args.affine)
 
@@ -60,27 +57,11 @@ def main():
     tag = 'densenet_in'
     test_origin_and_affines(affine_params, model, data, tag)
 
-    # trans = transforms.Compose([
-    #     transforms.Resize((28, 28)),
-    #     transforms.ToTensor(),
-    # ])
-    # dataset = datasets.CIFAR10(root='../../data', train=False, transform=trans, download=True)
-    # bs = 10000
-    # data_loader = torch.utils.data.DataLoader(dataset, batch_size=bs)
-    # data, _ = next(iter(data_loader))
-    # data = data[:, 0, :, :].view((bs, 1, 28, 28))
-    # # eval('cifar', data.numpy())
-    # tag = 'lenet_cifar'
-    # test_origin_and_affines(affine_params, model, device, data, tag)
-    # test_save(model, device, data, label)
-    #
-
-    # for i in range(10):
-    #     label = 'lenet_cifar_%d' % i
-    #     affine_param = torch.from_numpy(affine_params[i]).to(device).float()
-    #     grid = F.affine_grid(affine_param.repeat((data.size()[0], 1, 1)), data.size())
-    #     trans_data = F.grid_sample(data, grid)
-    #     test_save(model, device, trans_data, label)
+    testsetout = torchvision.datasets.ImageFolder("../../data/Imagenet", transform=transform)
+    test_loader = torch.utils.data.DataLoader(testsetout, batch_size=100, shuffle=False, num_workers=2)
+    data, _ = next(iter(test_loader))
+    tag = 'densenet_imagenet'
+    test_origin_and_affines(affine_params, model, data, tag)
 
     data = torch.from_numpy(np.random.randn(100, 3, 32, 32)).float()
     tag = 'densenet_gaussian'

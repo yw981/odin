@@ -15,28 +15,7 @@ if __name__ == '__main__':
     ])
     testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
-    # test_loader = torch.utils.data.DataLoader(
-    #     datasets.MNIST('../data', train=False, transform=transforms.Compose([
-    #         transforms.ToTensor(),
-    #         # transforms.Normalize((0.1307,), (0.3081,))
-    #     ])),
-    #     batch_size=10000)
-    # data, labels = next(iter(test_loader))
-    # print(type(data))
-    # print(type(labels))
-    # for j, data in enumerate(test_loader):
-    #     print(type(j))
-    #     print(type(data))
-    #     images, _ = data
-    #     print(type(images))
-    #     print(type(_))
-    #     #
-    #     # outputs = net1(inputs)
-    #     # nnOutputs = outputs.data.cpu()
-    #     # nnOutputs = nnOutputs.numpy()
-    #     #
-    #     # print(nnOutputs)
-    #     exit(0)
+
     data, labels = next(iter(test_loader))
     labels = labels.numpy()
     np.random.seed(1234)

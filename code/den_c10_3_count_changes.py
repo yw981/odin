@@ -291,12 +291,14 @@ if __name__ == "__main__":
     affine_detector('cifar in ', origin_in_result, mnist_affine_results)
 
     evaluate_result('in', verbose=True)
-    # evaluate_result('cifar', verbose=True)
-    # evaluate_result('normal', verbose=False)
+    evaluate_result('imagenet', verbose=True)
     evaluate_result('gaussian', verbose=True)
+    evaluate_result('uniform', verbose=True)
 
     evaluate_result('in', verbose=False)
+    evaluate_result('imagenet', verbose=False)
     evaluate_result('gaussian', verbose=False)
+    evaluate_result('uniform', verbose=False)
 
 
 
