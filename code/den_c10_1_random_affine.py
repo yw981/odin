@@ -1,43 +1,42 @@
 from __future__ import print_function
 import torch
-import torch.nn as nn
+import torchvision
 import torch.nn.functional as F
 from torchvision import datasets, transforms
 import numpy as np
-
-
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4 * 4 * 50, 500)
-        self.fc2 = nn.Linear(500, 10)
-        # for p in self.parameters():
-        #     p.requires_grad = False
-        self.apms = torch.nn.Parameter(torch.rand(size=(2, 3)))
-
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = x.view(-1, 4 * 4 * 50)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
-
+from torch.autograd import Variable
 
 if __name__ == '__main__':
-    print('hello')
-    print('hello2222')
+    CUDA_DEVICE = 0
 
-    test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=False, transform=transforms.Compose([
-            transforms.ToTensor(),
-            # transforms.Normalize((0.1307,), (0.3081,))
-        ])),
-        batch_size=10000)
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((125.3 / 255, 123.0 / 255, 113.9 / 255), (63.0 / 255, 62.1 / 255.0, 66.7 / 255.0)),
+    ])
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
+    # test_loader = torch.utils.data.DataLoader(
+    #     datasets.MNIST('../data', train=False, transform=transforms.Compose([
+    #         transforms.ToTensor(),
+    #         # transforms.Normalize((0.1307,), (0.3081,))
+    #     ])),
+    #     batch_size=10000)
+    # data, labels = next(iter(test_loader))
+    # print(type(data))
+    # print(type(labels))
+    # for j, data in enumerate(test_loader):
+    #     print(type(j))
+    #     print(type(data))
+    #     images, _ = data
+    #     print(type(images))
+    #     print(type(_))
+    #     #
+    #     # outputs = net1(inputs)
+    #     # nnOutputs = outputs.data.cpu()
+    #     # nnOutputs = nnOutputs.numpy()
+    #     #
+    #     # print(nnOutputs)
+    #     exit(0)
     data, labels = next(iter(test_loader))
     labels = labels.numpy()
     np.random.seed(1234)
@@ -45,30 +44,58 @@ if __name__ == '__main__':
     torch.manual_seed(1234)
     epochs = 2
 
-    device = torch.device("cuda" if use_cuda else "cpu")
+    model = torch.load('../../model/densenet10.pth')
+    model = model.cuda(CUDA_DEVICE)
+    v_data = Variable(data.cuda(CUDA_DEVICE), requires_grad=True)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    # in
+    output = model.forward(v_data)
+    output = F.softmax(output, dim=1)
+    lg = output.data.cpu().numpy()
+    amr = np.argmax(lg, axis=1)
+    aml = labels
+    wrong_indices = (amr != aml)
+    right_indices = ~wrong_indices
+    acc = (1 - np.sum(wrong_indices + 0) / aml.shape[0])
+    np.save('../result/densenet_in.npy', lg)
+    print('in saved ', acc)
+    print(type(v_data))
 
-    model = Net().to(device)
-    model.load_state_dict(torch.load('model/lenet_mnist_model.pth'))
+    # 老版本？因为densenet引用了老版本，必须用回老板
+    # device = torch.device("cuda" if use_cuda else "cpu")
+    # data = data.to(device)
+    # kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+
+    # model = Net().to(device)
+    # model.load_state_dict(torch.load('model/lenet_mnist_model.pth'))
     k = 0
     params = []
-    for i in range(999):
-        print('it ' + str(i))
+    for i in range(9999):
+        if i% 100 ==0 :
+            print('it ' + str(i))
 
         tfparam = np.array([[1.1, 0., 0.], [0., 1.1, 0.]])
         tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])
         # print(tfseed)
         tfparam += tfseed
-        print(np.linalg.norm(tfparam))
+        # print(np.linalg.norm(tfparam))
 
-        affine_param = torch.from_numpy(tfparam).to(device).float()
-        grid = F.affine_grid(affine_param.repeat((data.size()[0], 1, 1)), data.size())
+        affine_param = torch.from_numpy(tfparam).float()
+        # print(affine_param.size())
+        p2 = data.size()
+        # print(p2)
+        # print(p2[0])
+        p1 = affine_param.repeat(data.size()[0], 1, 1)
+
+        # print(p1)
+
+        grid = F.affine_grid(p1, p2)
         trans_data = F.grid_sample(data, grid)
-        output = model.forward(data.to(device))
+        v_trans_data = Variable(trans_data.data.cpu().cuda(CUDA_DEVICE), requires_grad=True)
+        output = model.forward(v_trans_data)
         output = F.softmax(output, dim=1)
 
-        lg = output.cpu().detach().numpy()
+        lg = output.data.cpu().numpy()
 
         # print(lg.shape)
         # print(mnist.test.labels.shape)
@@ -81,9 +108,10 @@ if __name__ == '__main__':
         # print(wrong_indices)
         right_indices = ~wrong_indices
         acc = (1 - np.sum(wrong_indices + 0) / aml.shape[0])
-        print("acc = %f" % acc)
-        if acc > 0.95:
-            print('save #%d' % i)
+
+        if acc > 0.90:
+            print("acc = %f" % acc)
+            print('!!!!!!!! save #%d' % i)
             print(tfparam)
             params.append(tfparam)
             # np.save('result/exp_affine_in_%d.npy' % k, lg_softmax)
@@ -94,4 +122,4 @@ if __name__ == '__main__':
 
     params = np.array(params)
     print(params.shape)
-    np.save('result/affine_params_random.npy', params)
+    np.save('../result/affine_params_random.npy', params)
