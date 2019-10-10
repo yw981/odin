@@ -30,6 +30,7 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     print('hello')
+    print('hello2222')
 
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
