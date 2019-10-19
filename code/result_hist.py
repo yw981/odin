@@ -1,12 +1,10 @@
 import numpy as np
-from func import arr_stat
+from func import arr_stat,RESULT_DIR
 import torch
 import torchvision
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
-from den_c10_3_2_score_diff import compare_in_softmax_score_diff, calculate_out_diff_scores
-
-RESULT_DIR = '../result_min'
+from den_c10_3_2_score_diff import calculate_softmax_score_diff, calculate_out_diff_scores
 
 
 def plot_two_hist(data1, color1, data2, color2, title='Title'):
@@ -30,38 +28,38 @@ if __name__ == "__main__":
 
     origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
 
-    # in 样本 对错的区分
-    arr_stat('in', origin_in_result)
-
-    amr = np.argmax(origin_in_result, axis=1)
-    aml = labels
-    right_indices = (amr == aml)
-    # wrong_indices = ~wrong_indices
-    base_acc = (1 - np.sum(~right_indices + 0) / aml.shape[0])
-    print(base_acc)
-
-    right_max_scores = np.max(origin_in_result, axis=1)[right_indices]
-    wrong_max_scores = np.max(origin_in_result, axis=1)[~right_indices]
-
-    arr_stat('right', right_max_scores)
-    arr_stat('wrong', wrong_max_scores)
-    plot_two_hist(right_max_scores, 'blue', wrong_max_scores, 'red', 'right wrong')
+    # ------------- in 样本 对错的区分
+    # arr_stat('in', origin_in_result)
+    #
+    # amr = np.argmax(origin_in_result, axis=1)
+    # aml = labels
+    # right_indices = (amr == aml)
+    # # wrong_indices = ~wrong_indices
+    # base_acc = (1 - np.sum(~right_indices + 0) / aml.shape[0])
+    # print(base_acc)
+    #
+    # right_max_scores = np.max(origin_in_result, axis=1)[right_indices]
+    # wrong_max_scores = np.max(origin_in_result, axis=1)[~right_indices]
+    #
+    # arr_stat('right', right_max_scores)
+    # arr_stat('wrong', wrong_max_scores)
+    # plot_two_hist(right_max_scores, 'blue', wrong_max_scores, 'red', 'right wrong')
     # in 样本 对错的区分 --------------------------end
 
-    # in out样本的区分
-    in_max_scores = np.max(origin_in_result, axis=1)
-    for key in ['imagenet', 'gaussian', 'uniform']:
-        origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
-        out_max_scores = np.max(origin_out_result, axis=1)
-        plot_two_hist(in_max_scores, 'blue', out_max_scores, 'red', 'in out origin {} Baseline'.format(key))
+    # ------------- in out样本的区分
+    # in_max_scores = np.max(origin_in_result, axis=1)
+    # for key in ['imagenet', 'gaussian', 'uniform']:
+    #     origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
+    #     out_max_scores = np.max(origin_out_result, axis=1)
+    #     plot_two_hist(in_max_scores, 'blue', out_max_scores, 'red', 'in out origin {} Baseline'.format(key))
     # in out样本的区分 --------------------------end
 
-    # 变换后in out 区分
+    # ------------- 变换后in out 区分
     origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
     in_diff_scores = []
     for i in range(10):
         result = np.load(RESULT_DIR + '/densenet_in_%d.npy' % i)
-        in_diff_score = compare_in_softmax_score_diff('cifar10 %d' % i, result, origin_in_result)
+        in_diff_score = calculate_softmax_score_diff('cifar10 %d' % i, result, origin_in_result)
         in_diff_scores.append(in_diff_score)
 
     in_diff_scores = np.array(in_diff_scores)

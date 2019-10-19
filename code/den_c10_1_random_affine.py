@@ -61,14 +61,18 @@ if __name__ == '__main__':
             print('it ' + str(i))
 
         # result
-        tfparam = np.array([[1.1, 0., 0.], [0., 1.1, 0.]])
-        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])
+        # tfparam = np.array([[1.1, 0., 0.], [0., 1.1, 0.]])
+        # tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])
 
         # result_min
         # # 缩小变化 初值[[1.1, 0., 0.], [0., 1.1, 0.]] -> [[1.0, 0., 0.], [0., 1.0, 0.]]
         # tfparam = np.array([[1.0, 0., 0.], [0., 1.0, 0.]])
         # # 缩小变化 最后 * 0.1
         # tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]]) * 0.1
+
+        # result_large
+        tfparam = np.array([[1.2, 0., 0.], [0., 1.2, 0.]])
+        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])*1.3
 
         tfparam += tfseed
 
