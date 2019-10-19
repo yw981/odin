@@ -31,29 +31,32 @@ if __name__ == "__main__":
     origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
 
     # in 样本 对错的区分
-    # arr_stat('in', origin_in_result)
-    #
-    # amr = np.argmax(origin_in_result, axis=1)
-    # aml = labels
-    # right_indices = (amr == aml)
-    # # wrong_indices = ~wrong_indices
-    # base_acc = (1 - np.sum(~right_indices + 0) / aml.shape[0])
-    # print(base_acc)
-    #
-    # right_max_scores = np.max(origin_in_result, axis=1)[right_indices]
-    # wrong_max_scores = np.max(origin_in_result, axis=1)[~right_indices]
-    #
-    # arr_stat('right', right_max_scores)
-    # arr_stat('wrong', wrong_max_scores)
-    # plot_two_hist(right_max_scores, 'blue', wrong_max_scores, 'red')
+    arr_stat('in', origin_in_result)
+
+    amr = np.argmax(origin_in_result, axis=1)
+    aml = labels
+    right_indices = (amr == aml)
+    # wrong_indices = ~wrong_indices
+    base_acc = (1 - np.sum(~right_indices + 0) / aml.shape[0])
+    print(base_acc)
+
+    right_max_scores = np.max(origin_in_result, axis=1)[right_indices]
+    wrong_max_scores = np.max(origin_in_result, axis=1)[~right_indices]
+
+    arr_stat('right', right_max_scores)
+    arr_stat('wrong', wrong_max_scores)
+    plot_two_hist(right_max_scores, 'blue', wrong_max_scores, 'red', 'right wrong')
+    # in 样本 对错的区分 --------------------------end
 
     # in out样本的区分
-    # in_max_scores = np.max(origin_in_result, axis=1)
-    # for key in ['imagenet', 'gaussian', 'uniform']:
-    #     origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
-    #     out_max_scores = np.max(origin_out_result, axis=1)
-    #     plot_two_hist(in_max_scores, 'blue', out_max_scores, 'red')
+    in_max_scores = np.max(origin_in_result, axis=1)
+    for key in ['imagenet', 'gaussian', 'uniform']:
+        origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
+        out_max_scores = np.max(origin_out_result, axis=1)
+        plot_two_hist(in_max_scores, 'blue', out_max_scores, 'red', 'in out origin {} Baseline'.format(key))
+    # in out样本的区分 --------------------------end
 
+    # 变换后in out 区分
     origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
     in_diff_scores = []
     for i in range(10):
@@ -62,8 +65,6 @@ if __name__ == "__main__":
         in_diff_scores.append(in_diff_score)
 
     in_diff_scores = np.array(in_diff_scores)
-    # print(in_diff_scores.shape)
-    # print(np.squeeze(in_diff_scores).shape)
 
     for key in ['imagenet', 'gaussian', 'uniform']:
         origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
@@ -72,9 +73,5 @@ if __name__ == "__main__":
 
         plot_two_hist(np.reshape(in_diff_scores, (in_diff_scores.shape[0] * in_diff_scores.shape[1],)), 'blue',
                       np.reshape(out_diff_scores, (out_diff_scores.shape[0] * out_diff_scores.shape[1],)), 'red',
-                      title='%s ' % key)
-
-        # for i in range(10):
-        #     plot_two_hist(in_diff_scores[i], 'blue', out_diff_scores[i], 'red', title='%s %d' % (key, i))
-
-        # exit(0)
+                      title='out diff %s ' % key)
+    # 变换后in out 区分 --------------------------end

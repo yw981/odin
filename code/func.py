@@ -1,5 +1,6 @@
 import numpy as np
 
+RESULT_DIR = '../result'
 
 def print5(tag, arr):
     print(tag, arr[0:5, ...])

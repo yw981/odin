@@ -6,10 +6,9 @@ from torchvision import datasets, transforms
 import numpy as np
 import argparse
 from torch.autograd import Variable
+from func import RESULT_DIR
 
 CUDA_DEVICE = 0
-RESULT_DIR = '../result_min'
-
 
 def test_save(model, data, label):
     # print(data.size())

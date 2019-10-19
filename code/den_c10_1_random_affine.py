@@ -6,11 +6,10 @@ from torchvision import datasets, transforms
 import numpy as np
 from torch.autograd import Variable
 import os
-from func import arr_stat
+from func import arr_stat,RESULT_DIR
 
 if __name__ == '__main__':
     CUDA_DEVICE = 0
-    RESULT_DIR = '../result_min'
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -61,13 +60,17 @@ if __name__ == '__main__':
         if i % 100 == 0:
             print('it ' + str(i))
 
-        # 缩小变化 初值[[1.1, 0., 0.], [0., 1.1, 0.]] -> [[1.0, 0., 0.], [0., 1.0, 0.]]
-        tfparam = np.array([[1.0, 0., 0.], [0., 1.0, 0.]])
-        # 缩小变化 最后 * 0.1
-        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]]) * 0.1
-        # print(tfseed)
+        # result
+        tfparam = np.array([[1.1, 0., 0.], [0., 1.1, 0.]])
+        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])
+
+        # result_min
+        # # 缩小变化 初值[[1.1, 0., 0.], [0., 1.1, 0.]] -> [[1.0, 0., 0.], [0., 1.0, 0.]]
+        # tfparam = np.array([[1.0, 0., 0.], [0., 1.0, 0.]])
+        # # 缩小变化 最后 * 0.1
+        # tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]]) * 0.1
+
         tfparam += tfseed
-        # print(np.linalg.norm(tfparam))
 
         affine_param = torch.from_numpy(tfparam).float()
         # print(affine_param.size())
@@ -104,7 +107,7 @@ if __name__ == '__main__':
             print(tfparam)
             params.append(tfparam)
             # np.save('result/exp_affine_in_%d.npy' % k, lg_softmax)
-            print(lg.shape)
+            print(np.linalg.norm(tfparam))
             k += 1
             if k >= 10:
                 break
