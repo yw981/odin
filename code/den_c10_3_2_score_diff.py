@@ -124,7 +124,7 @@ def detection(in_data, out_data, is_diff=False):
     return errorBase
 
 
-def compare_in_softmax_score_diff(tag, softmax_result, origin, labels):
+def compare_in_softmax_score_diff(tag, softmax_result, origin):
     softmax_result = softmax_result.squeeze()
     # print5('ori', origin)
     # print5('trans', softmax_result)
@@ -324,7 +324,7 @@ def calculate_out_diff_scores(tag, origin_out_result):
 
     for i in range(10):
         result = np.load(RESULT_DIR + '/densenet_imagenet_%d.npy' % i)
-        out_diff_score = compare_in_softmax_score_diff('imagenet %d' % i, result, origin_out_result, labels)
+        out_diff_score = compare_in_softmax_score_diff('imagenet %d' % i, result, origin_out_result)
         out_diff_scores.append(out_diff_score)
 
     return np.array(out_diff_scores)
@@ -378,8 +378,6 @@ if __name__ == "__main__":
     #     result = np.load('../result/densenet_imagenet_%d.npy' % i)
     #     out_diff_score = compare_in_softmax_score_diff('imagenet %d' % i, result, origin_out_result, labels)
     #     out_diff_scores.append(out_diff_score)
-
-
 
     for key in ['imagenet', 'gaussian', 'uniform']:
         origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
