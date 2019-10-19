@@ -1,14 +1,5 @@
-## test_attack.py -- sample code to test attack procedure
-##
-## Copyright (C) 2016, Nicholas Carlini <nicholas@carlini.com>.
-##
-## This program is licenced under the BSD 2-Clause licence,
-## contained in the LICENCE file in this directory.
-
 import numpy as np
-
 import matplotlib.pyplot as plt
-
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
 from inspect import signature
@@ -16,6 +7,9 @@ from sklearn.metrics import roc_curve, auc
 import torch
 import torchvision
 from torchvision import datasets, transforms
+from func import arr_stat
+
+RESULT_DIR = '../result_min'
 
 
 def show_images(npdata, num_row=10):
@@ -40,13 +34,94 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
 
 
-def arr_stat(label, arr):
-    print(label + " count ", arr.shape[0], " max ", np.max(arr), " min ", np.min(arr), " mean ", np.mean(arr), " var ",
-          np.var(arr), " median ", np.median(arr))
+def tpr95(in_data, out_data, is_diff=False):
+    # calculate the falsepositive error when tpr is 95%
+    start = np.min(np.array([in_data, out_data]))
+    end = np.max(np.array([in_data, out_data]))
+    gap = (end - start) / 100000
+    Y1 = out_data if is_diff else np.max(out_data, axis=1)
+    X1 = in_data if is_diff else np.max(in_data, axis=1)
+    total = 0.0
+    fpr = 0.0
+    for delta in np.arange(start, end, gap):
+        tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
+        error2 = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
+        if tpr <= 0.9505 and tpr >= 0.9495:
+            fpr += error2
+            total += 1
+    fprBase = fpr / total
+
+    return fprBase
 
 
-def print5(tag, arr):
-    print(tag, arr[0:5, ...])
+def auroc(in_data, out_data, is_diff=False):
+    # calculate the AUROC
+
+    start = np.min(np.array([in_data, out_data]))
+    end = np.max(np.array([in_data, out_data]))
+
+    gap = (end - start) / 100000
+    Y1 = out_data if is_diff else np.max(out_data, axis=1)
+    X1 = in_data if is_diff else np.max(in_data, axis=1)
+
+    aurocBase = 0.0
+    fprTemp = 1.0
+    for delta in np.arange(start, end, gap):
+        tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
+        fpr = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
+        aurocBase += (-fpr + fprTemp) * tpr
+        fprTemp = fpr
+    aurocBase += fpr * tpr
+    return aurocBase
+
+
+def auprIn(in_data, out_data, is_diff=False):
+    # calculate the AUPR
+
+    start = np.min(np.array([in_data, out_data]))
+    end = np.max(np.array([in_data, out_data]))
+
+    gap = (end - start) / 100000
+    Y1 = out_data if is_diff else np.max(out_data, axis=1)
+    X1 = in_data if is_diff else np.max(in_data, axis=1)
+    precisionVec = []
+    recallVec = []
+    auprBase = 0.0
+    recallTemp = 1.0
+    for delta in np.arange(start, end, gap):
+        tp = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
+        fp = np.sum(np.sum(Y1 >= delta)) / np.float(len(Y1))
+        if tp + fp == 0: continue
+        precision = tp / (tp + fp)
+        recall = tp
+        precisionVec.append(precision)
+        recallVec.append(recall)
+        auprBase += (recallTemp - recall) * precision
+        recallTemp = recall
+    auprBase += recall * precision
+
+    return auprBase
+
+
+def detection(in_data, out_data, is_diff=False):
+    # calculate the minimum detection error
+    start = np.min(np.array([in_data, out_data]))
+    end = np.max(np.array([in_data, out_data]))
+
+    gap = (end - start) / 100000
+    # print(out_data.shape)
+    # arr_stat('out data ', out_data)
+    # 原著只有最高分进去比了，此处已修改
+    Y1 = out_data if is_diff else np.max(out_data, axis=1)
+    X1 = in_data if is_diff else np.max(in_data, axis=1)
+    errorBase = 1.0
+
+    for delta in np.arange(start, end, gap):
+        tpr = np.sum(np.sum(X1 < delta)) / np.float(len(X1))
+        error2 = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
+        errorBase = np.minimum(errorBase, (tpr + error2) / 2.0)
+
+    return errorBase
 
 
 def compare_in_softmax_score_diff(tag, softmax_result, origin, labels):
@@ -69,44 +144,15 @@ def compare_in_softmax_score_diff(tag, softmax_result, origin, labels):
     # print('cor', cor_scores.shape)
     # print5(cor_scores)
 
-    diff_score = origin_max_scores - cor_scores
+
+    # 原计划，按逻辑diff_score = origin_max_scores - cor_scores，分数越低（可为负的）越好（越in），为计算AUROC取反了
+    diff_score = cor_scores - origin_max_scores
     # print('diff_score')
     # print5('diff',diff_score)
     # arr_stat('diff', diff_score[0:5, ...])
-    arr_stat('diff '+tag, diff_score)
-    # amr = np.argmax(softmax_result, axis=1)
-    # aml = labels
-    # wrong_indices = (amr != aml)
-    # right_indices = ~wrong_indices
-    # print("acc = %f" % (1 - np.sum(wrong_indices) / aml.shape[0]))
-    # right_softmax_scores = softmax_result[right_indices]
-    # wrong_softmax_scores = softmax_result[wrong_indices]
-    # eval(tag + ' all', np.max(softmax_result, axis=1))
-    # eval(tag + ' right', np.max(right_softmax_scores, axis=1))
-    # eval(tag + ' wrong', np.max(wrong_softmax_scores, axis=1))
-    # # argmax origin
-    # amo = np.argmax(origin, axis=1)
-    # error_indices = (amo != amr)
-    # print(tag + " diff rate _ = %f" % (np.sum(error_indices) / amo.shape[0]))
+    # arr_stat('diff ' + tag, diff_score)
 
-
-def softmax_score_stat(label, softmax_scores):
-    # cifar_softmax_scores = np.max(softmax(result), axis=1)
-    eval(label, np.max(softmax_scores, axis=1))
-
-
-###
-# 比较两个结果集不一样的
-###
-def count_diff_rate(label, origin, variant):
-    # argmax origin
-    amo = np.argmax(origin, axis=1)
-    # argmax variant
-    amv = np.argmax(variant, axis=1)
-    print(amo)
-    print(amv)
-    error_indices = (amo != amv)
-    print(label + " diff rate ^ = %f" % (np.sum(error_indices) / amo.shape[0]))
+    return diff_score
 
 
 def affine_detector(tag, origin, variant_arr):
@@ -273,26 +319,40 @@ def vis_diff_roc(tag, in_origin, in_variant_arr, out_origin, out_variant_arr):
     cal_roc(re, y_label)
 
 
-def evaluate_result(label, verbose=True):
-    ood_results = []
-    origin_result = np.load('../result/densenet_%s.npy' % label)
+def calculate_out_diff_scores(tag, origin_out_result):
+    out_diff_scores = []
+
     for i in range(10):
-        result = np.load('../result/densenet_%s_%d.npy' % (label, i))
-        ood_results.append(result)
+        result = np.load(RESULT_DIR + '/densenet_imagenet_%d.npy' % i)
+        out_diff_score = compare_in_softmax_score_diff('imagenet %d' % i, result, origin_out_result, labels)
+        out_diff_scores.append(out_diff_score)
 
-    if verbose:
-        softmax_score_stat('origin ' + label, origin_result)
-        for i in range(10):
-            softmax_score_stat('%s ood %d' % (label, i), ood_results[i])
-            count_diff_rate('%s_cmp ood %d' % (label, i), origin_result, ood_results[i])
-            print('\n')
+    return np.array(out_diff_scores)
 
-    affine_detector(label + ' ood ', origin_result, ood_results)
+
+def evaluate_diff_score(tag, in_data, out_data, is_diff=False):
+    # print(tag, ' fpr at tpr95 ', tpr95(in_data, out_data))
+    # print(tag, ' error ', detection(in_data, out_data))
+    # print(tag, ' AUROC ', auroc(in_data, out_data))
+    # print(tag, ' AUPR in ', auprIn(in_data, out_data))
+    str = "{} error : {:8.2f}% FPR at TPR95 : {:8.2f}% AUROC : {:>8.2f}% AUPR in : {:>8.2f}% "
+    print(str.format(tag,
+                     detection(in_data,
+                               out_data,
+                               is_diff) * 100,
+                     tpr95(in_data,
+                           out_data,
+                           is_diff) * 100,
+                     auroc(in_data,
+                           out_data,
+                           is_diff) * 100,
+                     auprIn(in_data,
+                            out_data,
+                            is_diff) * 100))
 
 
 # 测试
 if __name__ == "__main__":
-    # mnist = input_data.read_data_sets("../data/MNIST")
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((125.3 / 255, 123.0 / 255, 113.9 / 255), (63.0 / 255, 62.1 / 255.0, 66.7 / 255.0)),
@@ -301,30 +361,35 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
     _, labels = next(iter(test_loader))
     labels = labels.numpy()
-    origin_in_result = np.load('../result/densenet_in.npy')
+
+    origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
     compare_in_softmax_score_diff('in', origin_in_result, origin_in_result, labels)
-    mnist_affine_results = []
+    in_diff_scores = []
     for i in range(10):
-        result = np.load('../result/densenet_in_%d.npy' % i)
-        mnist_affine_results.append(result)
-        compare_in_softmax_score_diff('cifar10 %d' % i, result, origin_in_result, labels)
+        result = np.load(RESULT_DIR + '/densenet_in_%d.npy' % i)
+        in_diff_score = compare_in_softmax_score_diff('cifar10 %d' % i, result, origin_in_result, labels)
+        in_diff_scores.append(in_diff_score)
 
-    origin_result = np.load('../result/densenet_imagenet.npy')
-    for i in range(10):
-        result = np.load('../result/densenet_imagenet_%d.npy' % i)
-        # ood_results.append(result)
-        compare_in_softmax_score_diff('cifar10 %d' % i, result, origin_in_result, labels)
+    in_diff_scores = np.array(in_diff_scores)
+
+    # out_diff_scores = []
+    # origin_out_result = np.load('../result/densenet_imagenet.npy')
+    # for i in range(10):
+    #     result = np.load('../result/densenet_imagenet_%d.npy' % i)
+    #     out_diff_score = compare_in_softmax_score_diff('imagenet %d' % i, result, origin_out_result, labels)
+    #     out_diff_scores.append(out_diff_score)
 
 
 
-        # affine_detector('cifar in ', origin_in_result, mnist_affine_results)
-        #
-        # evaluate_result('in', verbose=True)
-        # evaluate_result('imagenet', verbose=True)
-        # evaluate_result('gaussian', verbose=True)
-        # evaluate_result('uniform', verbose=True)
-        #
-        # evaluate_result('in', verbose=False)
-        # evaluate_result('imagenet', verbose=False)
-        # evaluate_result('gaussian', verbose=False)
-        # evaluate_result('uniform', verbose=False)
+    for key in ['imagenet', 'gaussian', 'uniform']:
+        origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
+
+        # arr_stat('in', origin_in_result)
+        # arr_stat('out', origin_out_result)
+
+        evaluate_diff_score('Baseline ', origin_in_result, origin_out_result)
+
+        out_diff_scores = calculate_out_diff_scores(key, origin_out_result)
+
+        for i in range(10):
+            evaluate_diff_score('%s %d' % (key, i), in_diff_scores[i], out_diff_scores[i], True)

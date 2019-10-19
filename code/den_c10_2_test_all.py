@@ -8,6 +8,7 @@ import argparse
 from torch.autograd import Variable
 
 CUDA_DEVICE = 0
+RESULT_DIR = '../result_min'
 
 
 def test_save(model, data, label):
@@ -18,7 +19,7 @@ def test_save(model, data, label):
     data = Variable(data.data.cpu().cuda(CUDA_DEVICE))
     output = model.forward(data)
     output = F.softmax(output, dim=1)
-    np.save('../result/%s.npy' % label, output.data.cpu().numpy())
+    np.save(RESULT_DIR + '/%s.npy' % label, output.data.cpu().numpy())
     print(label, ' saved')
 
 
@@ -45,7 +46,7 @@ def main():
 
     model = torch.load('../../model/densenet10.pth')
     # model.load_state_dict(torch.load('model/lenet_mnist_model.pth'))
-    affine_params = np.load('../result/' + args.affine)
+    affine_params = np.load(RESULT_DIR + '/' + args.affine)
 
     transform = transforms.Compose([
         transforms.ToTensor(),

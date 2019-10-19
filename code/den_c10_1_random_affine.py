@@ -5,9 +5,12 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 import numpy as np
 from torch.autograd import Variable
+import os
+from func import arr_stat
 
 if __name__ == '__main__':
     CUDA_DEVICE = 0
+    RESULT_DIR = '../result_min'
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -35,10 +38,15 @@ if __name__ == '__main__':
     aml = labels
     wrong_indices = (amr != aml)
     right_indices = ~wrong_indices
-    acc = (1 - np.sum(wrong_indices + 0) / aml.shape[0])
-    np.save('../result/densenet_in.npy', lg)
-    print('in saved ', acc)
-    print(type(v_data))
+    base_acc = (1 - np.sum(wrong_indices + 0) / aml.shape[0])
+
+    if not os.path.exists(RESULT_DIR):
+        os.mkdir(RESULT_DIR)
+
+    np.save(RESULT_DIR + '/densenet_in.npy', lg)
+    print('in saved base acc = ', base_acc)
+    # arr_stat('in ',lg)
+    # print5('in ',lg)
 
     # 老版本？因为densenet引用了老版本，必须用回老板
     # device = torch.device("cuda" if use_cuda else "cpu")
@@ -50,11 +58,13 @@ if __name__ == '__main__':
     k = 0
     params = []
     for i in range(9999):
-        if i% 100 ==0 :
+        if i % 100 == 0:
             print('it ' + str(i))
 
-        tfparam = np.array([[1.1, 0., 0.], [0., 1.1, 0.]])
-        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]])
+        # 缩小变化 初值[[1.1, 0., 0.], [0., 1.1, 0.]] -> [[1.0, 0., 0.], [0., 1.0, 0.]]
+        tfparam = np.array([[1.0, 0., 0.], [0., 1.0, 0.]])
+        # 缩小变化 最后 * 0.1
+        tfseed = (np.random.rand(2, 3) - 0.5) * np.array([[0.2, 0.2, 6], [0.2, 0.2, 6]]) * 0.1
         # print(tfseed)
         tfparam += tfseed
         # print(np.linalg.norm(tfparam))
@@ -88,7 +98,7 @@ if __name__ == '__main__':
         right_indices = ~wrong_indices
         acc = (1 - np.sum(wrong_indices + 0) / aml.shape[0])
 
-        if acc > 0.90:
+        if acc > base_acc * 0.95:
             print("acc = %f" % acc)
             print('!!!!!!!! save #%d' % i)
             print(tfparam)
@@ -101,4 +111,4 @@ if __name__ == '__main__':
 
     params = np.array(params)
     print(params.shape)
-    np.save('../result/affine_params_random.npy', params)
+    np.save(RESULT_DIR + '/affine_params_random.npy', params)
