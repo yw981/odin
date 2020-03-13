@@ -21,7 +21,7 @@ if __name__ == '__main__':
     data, labels = next(iter(test_loader))
     labels = labels.numpy()
     np.random.seed(1234)
-    use_cuda = torch.cuda.is_available()
+    # use_cuda = torch.cuda.is_available()
     torch.manual_seed(1234)
     epochs = 2
 
