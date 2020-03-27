@@ -37,7 +37,9 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
     print("Processing in-distribution images")
     ########################################In-distribution###########################################
     for j, data in enumerate(testloader10):
-        if j < 1000: continue
+        # if j < 1000: continue
+        # if j == 1010: break
+        # print(j)
         images, _ = data
 
         inputs = Variable(images.cuda(CUDA_DEVICE), requires_grad=True)
@@ -46,7 +48,12 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
+
+        # print('nnOutputs size',nnOutputs.shape)
+        # print(nnOutputs)
+        # 这里就是在softmax ？
         nnOutputs = nnOutputs[0]
+        # 减去最大值，让所有数字都变负数，最大得分0
         nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         f1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
@@ -57,7 +64,9 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
         maxIndexTemp = np.argmax(nnOutputs)
+        # print(maxIndexTemp)
         labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
+        # print(labels)
         # labels = torch.from_numpy(maxIndexTemp)
         loss = criterion(outputs, labels)
         loss.backward()
@@ -65,17 +74,24 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Normalizing the gradient to binary in {0, 1}
         gradient = torch.ge(inputs.grad.data, 0)
         gradient = (gradient.float() - 0.5) * 2
+        # print(inputs.grad.data)
+        # print(gradient.size())
+        # print(gradient)
         # Normalizing the gradient to the same space of image
         gradient[0][0] = (gradient[0][0]) / (63.0 / 255.0)
         gradient[0][1] = (gradient[0][1]) / (62.1 / 255.0)
         gradient[0][2] = (gradient[0][2]) / (66.7 / 255.0)
         # Adding small perturbations to images
+        # add函数的规则 torch.add(input, value=1, other, out=None) out=input+value×other
         tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
         outputs = net1(Variable(tempInputs))
+        # outputs = net1(Variable(inputs.data))
         outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
+        # print(nnOutputs)
+        # exit(0)
         nnOutputs = nnOutputs[0]
         nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
@@ -90,7 +106,8 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
     print("Processing out-of-distribution images")
     ###################################Out-of-Distributions#####################################
     for j, data in enumerate(testloader):
-        if j < 1000: continue
+        # if j < 1000: continue
+        # if j == 1010: break
         images, _ = data
 
         inputs = Variable(images.cuda(CUDA_DEVICE), requires_grad=True)

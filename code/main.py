@@ -15,21 +15,9 @@ Created on Sat Sep 19 20:55:56 2015
 
 from __future__ import print_function
 import argparse
-import os
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
-# import matplotlib.pyplot as plt
-import numpy as np
-import time
-# import lmdb
-from scipy import misc
+
 import cal as c
+import cal_vgg as cv
 
 parser = argparse.ArgumentParser(description='Pytorch Detecting Out-of-distribution examples in neural networks')
 
@@ -74,7 +62,10 @@ parser.set_defaults(argument=True)
 def main():
     global args
     args = parser.parse_args()
-    c.test(args.nn, args.out_dataset, args.gpu, args.magnitude, args.temperature)
+    if args.nn == "densenet10" or args.nn == "wideresnet10":
+        c.test(args.nn, args.out_dataset, args.gpu, args.magnitude, args.temperature)
+    else:
+        cv.test(args.nn, args.out_dataset, args.gpu, args.magnitude, args.temperature)
 
 
 if __name__ == '__main__':

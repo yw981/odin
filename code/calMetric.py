@@ -45,13 +45,21 @@ def tpr95(name):
     X1 = cifar[:, 2]
     total = 0.0
     fpr = 0.0
+    max_tpr = 0.0
     for delta in np.arange(start, end, gap):
         tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
         error2 = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
+        if tpr > max_tpr: max_tpr = tpr
         if tpr <= 0.9505 and tpr >= 0.9495:
             fpr += error2
             total += 1
-    fprBase = fpr / total
+
+    fprBase = -1.0
+    if total > 0:
+        fprBase = fpr / total
+    else:
+        print('max tpr ', max_tpr, ' !')
+        return fprBase, -1.0
 
     # calculate our algorithm
     T = 1000
@@ -75,7 +83,13 @@ def tpr95(name):
         if tpr <= 0.9505 and tpr >= 0.9495:
             fpr += error2
             total += 1
-    fprNew = fpr / total
+
+    fprNew = -1.0
+    if total > 0:
+        fprNew = fpr / total
+    else:
+        print('max tpr ', max_tpr, ' !')
+        return fprBase, fprNew
 
     return fprBase, fprNew
 

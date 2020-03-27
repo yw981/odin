@@ -13,19 +13,18 @@ Created on Sat Sep 19 20:55:56 2015
 """
 
 from __future__ import print_function
+
+import time
+
 import torch
-from torch.autograd import Variable
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-import numpy as np
-import time
-from scipy import misc
-import calMetric as m
+
 import calData as d
+import calMetric as m
+import vgg1
 
 # CUDA_DEVICE = 0
 
@@ -54,23 +53,32 @@ criterion = nn.CrossEntropyLoss()
 
 
 def test(nnName, dataName, CUDA_DEVICE, epsilon, temperature):
-    net1 = torch.load("../../model/{}.pth".format(nnName))
-    # optimizer1 = optim.SGD(net1.parameters(), lr=0, momentum=0)
-    net1.cuda(CUDA_DEVICE)
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    net1 = vgg1.VGG('VGG16').to(device)
+    # Test set: Average loss: 0.0015, Accuracy: 9337 / 10000(93 %)
+
+    if use_cuda:
+        net1 = torch.nn.DataParallel(net1)
+        cudnn.benchmark = True
+
+    checkpoint = torch.load("../../model/{}.pth".format(nnName))
+    net1.load_state_dict(checkpoint['net'])
+    net1.eval()
 
     if dataName != "Uniform" and dataName != "Gaussian":
         testsetout = torchvision.datasets.ImageFolder("../../data/{}".format(dataName), transform=transform)
         testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=1,
-                                                    shuffle=False, num_workers=8)
+                                                    shuffle=False, num_workers=2)
 
-    if nnName == "densenet10" or nnName == "wideresnet10":
-        testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
-        testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
-                                                   shuffle=False, num_workers=8)
-    if nnName == "densenet100" or nnName == "wideresnet100":
-        testset = torchvision.datasets.CIFAR100(root='../../data', train=False, download=True, transform=transform)
-        testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
-                                                   shuffle=False, num_workers=8)
+    # if nnName == "densenet10" or nnName == "wideresnet10":
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
+    testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
+                                               shuffle=False, num_workers=2)
+    # if nnName == "densenet100" or nnName == "wideresnet100":
+    #     testset = torchvision.datasets.CIFAR100(root='../../data', train=False, download=True, transform=transform)
+    #     testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
+    #                                                shuffle=False, num_workers=2)
 
     if dataName == "Gaussian":
         d.testGaussian(net1, criterion, CUDA_DEVICE, testloaderIn, testloaderIn, nnName, dataName, epsilon, temperature)
