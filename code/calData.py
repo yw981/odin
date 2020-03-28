@@ -59,7 +59,7 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         f1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
         # Using temperature scaling
-        outputs = outputs / temper
+        # outputs = outputs / temper
 
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
@@ -86,7 +86,7 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
         outputs = net1(Variable(tempInputs))
         # outputs = net1(Variable(inputs.data))
-        outputs = outputs / temper
+        # outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
@@ -122,7 +122,7 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         f2.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
         # Using temperature scaling
-        outputs = outputs / temper
+        # outputs = outputs / temper
 
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
@@ -141,7 +141,7 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Adding small perturbations to images
         tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
         outputs = net1(Variable(tempInputs))
-        outputs = outputs / temper
+        # outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()

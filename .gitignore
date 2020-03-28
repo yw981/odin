@@ -1,7 +1,7 @@
 .idea/
 **/model
 **/data
-**/softmax_scores
+**/softmax_scores*
 *.npy
 **/pic
 *.jpg

@@ -33,16 +33,13 @@ def tpr95(name):
     T = 1
     cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 1
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 1
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     total = 0.0
     fpr = 0.0
     max_tpr = 0.0
@@ -65,16 +62,13 @@ def tpr95(name):
     T = 1000
     cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 0.12
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 0.0104
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     total = 0.0
     fpr = 0.0
     for delta in np.arange(start, end, gap):
@@ -94,53 +88,82 @@ def tpr95(name):
     return fprBase, fprNew
 
 
+def cal_auroc(in_file_path, out_file_path):
+    in_data = np.loadtxt(in_file_path, delimiter=',')
+    out_data = np.loadtxt(out_file_path, delimiter=',')
+    in_softmax_scores = in_data[:, 2]
+    out_softmax_scores = out_data[:, 2]
+    start = min(np.min(in_softmax_scores), np.min(out_softmax_scores))
+    end = max(np.max(in_softmax_scores), np.max(out_softmax_scores))
+    # print('auroc in', start, ',', end)
+    gap = (end - start) / 100000
+    aurocValue = 0.0
+    fprTemp = 1.0
+    for delta in np.arange(start, end, gap):
+        tpr = np.sum(np.sum(in_softmax_scores >= delta)) / np.float(len(in_softmax_scores))
+        fpr = np.sum(np.sum(out_softmax_scores > delta)) / np.float(len(out_softmax_scores))
+        aurocValue += (-fpr + fprTemp) * tpr
+        fprTemp = fpr
+    aurocValue += fpr * tpr
+    return aurocValue
+
+
 def auroc(name):
     # calculate the AUROC
-    # calculate baseline
-    T = 1
-    cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
-    other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 1
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 1
-    gap = (end - start) / 100000
-    # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
-    Y1 = other[:, 2]
-    X1 = cifar[:, 2]
-    aurocBase = 0.0
-    fprTemp = 1.0
-    for delta in np.arange(start, end, gap):
-        tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
-        fpr = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
-        aurocBase += (-fpr + fprTemp) * tpr
-        fprTemp = fpr
-    aurocBase += fpr * tpr
-    # calculate our algorithm
-    T = 1000
-    cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
-    other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 0.12
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 0.0104
-    gap = (end - start) / 100000
-    # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
-    Y1 = other[:, 2]
-    X1 = cifar[:, 2]
-    aurocNew = 0.0
-    fprTemp = 1.0
-    for delta in np.arange(start, end, gap):
-        tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
-        fpr = np.sum(np.sum(Y1 >= delta)) / np.float(len(Y1))
-        aurocNew += (-fpr + fprTemp) * tpr
-        fprTemp = fpr
-    aurocNew += fpr * tpr
-    return aurocBase, aurocNew
+    # AUROC:                       95.4%              98.4%
+    return cal_auroc('./softmax_scores/confidence_Base_In.txt', './softmax_scores/confidence_Base_Out.txt'), \
+           cal_auroc('./softmax_scores/confidence_Our_In.txt', './softmax_scores/confidence_Our_Out.txt')
+    # T = 1
+    # cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
+    # other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
+    # # if name == "CIFAR-10":
+    # #     start = 0.1
+    # #     end = 1
+    # # if name == "CIFAR-100":
+    # #     start = 0.01
+    # #     end = 1
+    # # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
+    # Y1 = other[:, 2]
+    # X1 = cifar[:, 2]
+    # start = min(np.min(X1), np.min(Y1))
+    # end = max(np.max(X1), np.max(Y1))
+    # print('auroc in', start, ',', end)
+    # gap = (end - start) / 100000
+    # aurocBase = 0.0
+    # fprTemp = 1.0
+    # for delta in np.arange(start, end, gap):
+    #     tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
+    #     fpr = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
+    #     aurocBase += (-fpr + fprTemp) * tpr
+    #     fprTemp = fpr
+    # aurocBase += fpr * tpr
+    # # calculate our algorithm
+    # T = 1000
+    # cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
+    # other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
+    # # if name == "CIFAR-10":
+    # #     start = 0.1
+    # #     end = 0.12
+    # # if name == "CIFAR-100":
+    # #     start = 0.01
+    # #     end = 0.0104
+    #
+    # # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
+    # Y1 = other[:, 2]
+    # X1 = cifar[:, 2]
+    # start = min(np.min(X1), np.min(Y1))
+    # end = max(np.max(X1), np.max(Y1))
+    # print('auroc out', start, ',', end)
+    # gap = (end - start) / 100000
+    # aurocNew = 0.0
+    # fprTemp = 1.0
+    # for delta in np.arange(start, end, gap):
+    #     tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
+    #     fpr = np.sum(np.sum(Y1 >= delta)) / np.float(len(Y1))
+    #     aurocNew += (-fpr + fprTemp) * tpr
+    #     fprTemp = fpr
+    # aurocNew += fpr * tpr
+    # return aurocBase, aurocNew
 
 
 def auprIn(name):
@@ -149,18 +172,15 @@ def auprIn(name):
     T = 1
     cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 1
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 1
-    gap = (end - start) / 100000
+
     precisionVec = []
     recallVec = []
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     auprBase = 0.0
     recallTemp = 1.0
     for delta in np.arange(start, end, gap):
@@ -180,16 +200,13 @@ def auprIn(name):
     T = 1000
     cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 0.12
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 0.0104
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     auprNew = 0.0
     recallTemp = 1.0
     for delta in np.arange(start, end, gap):
@@ -212,15 +229,12 @@ def auprOut(name):
     T = 1
     cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 1
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 1
-    gap = (end - start) / 100000
+
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     auprBase = 0.0
     recallTemp = 1.0
     for delta in np.arange(end, start, -gap):
@@ -237,16 +251,13 @@ def auprOut(name):
     T = 1000
     cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 0.12
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 0.0104
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     auprNew = 0.0
     recallTemp = 1.0
     for delta in np.arange(end, start, -gap):
@@ -267,16 +278,13 @@ def detection(name):
     T = 1
     cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 1
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 1
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     errorBase = 1.0
     for delta in np.arange(start, end, gap):
         tpr = np.sum(np.sum(X1 < delta)) / np.float(len(X1))
@@ -287,16 +295,13 @@ def detection(name):
     T = 1000
     cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
     other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    if name == "CIFAR-10":
-        start = 0.1
-        end = 0.12
-    if name == "CIFAR-100":
-        start = 0.01
-        end = 0.0104
-    gap = (end - start) / 100000
+
     # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
     Y1 = other[:, 2]
     X1 = cifar[:, 2]
+    start = min(np.min(X1), np.min(Y1))
+    end = max(np.max(X1), np.max(Y1))
+    gap = (end - start) / 100000
     errorNew = 1.0
     for delta in np.arange(start, end, gap):
         tpr = np.sum(np.sum(X1 < delta)) / np.float(len(X1))
@@ -335,5 +340,6 @@ def metric(nn, data):
     print("{:20}{:13.1f}%{:>18.1f}%".format("AUPR In:", auprinBase * 100, auprinNew * 100))
     print("{:20}{:13.1f}%{:>18.1f}%".format("AUPR Out:", auproutBase * 100, auproutNew * 100))
 
+
 if __name__ == '__main__':
-    metric("densenet10",'Imagenet')
+    metric("densenet10", 'Imagenet')
