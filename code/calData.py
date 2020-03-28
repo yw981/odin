@@ -49,17 +49,21 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
 
-        # print('nnOutputs size',nnOutputs.shape)
-        # print(nnOutputs)
-        # 这里就是在softmax ？
+        # 这里就是在softmax
         nnOutputs = nnOutputs[0]
-        # 减去最大值，让所有数字都变负数，最大得分0
+        # print(np.exp(nnOutputs) / np.sum(np.exp(nnOutputs)))
+        # 减去最大值，让所有数字都变负数，最大得分0 ？去掉也可，有影响，非常小10e-5左右，以下是两组数据对比
+        # [4.6807851e-09 6.4017240e-09 6.8986850e-08 9.9999994e-01 1.0810218e-09
+        #  1.7836786e-08 7.8857019e-09 2.6739691e-10 3.1237660e-10 3.8250896e-11]
+        # [4.6807846e-09 6.4017187e-09 6.8986878e-08 9.9999988e-01 1.0810218e-09
+        #  1.7836784e-08 7.8857010e-09 2.6739716e-10 3.1237637e-10 3.8250875e-11]
+
         nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         f1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
         # Using temperature scaling
-        # outputs = outputs / temper
+        outputs = outputs / temper
 
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
@@ -86,14 +90,14 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
         outputs = net1(Variable(tempInputs))
         # outputs = net1(Variable(inputs.data))
-        # outputs = outputs / temper
+        outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
         # print(nnOutputs)
         # exit(0)
         nnOutputs = nnOutputs[0]
-        nnOutputs = nnOutputs - np.max(nnOutputs)
+        # nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         g1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
         if j % 100 == 99:
@@ -117,12 +121,12 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
         nnOutputs = nnOutputs[0]
-        nnOutputs = nnOutputs - np.max(nnOutputs)
+        # nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         f2.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
         # Using temperature scaling
-        # outputs = outputs / temper
+        outputs = outputs / temper
 
         # Calculating the perturbation we need to add, that is,
         # the sign of gradient of cross entropy loss w.r.t. input
@@ -141,12 +145,13 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # Adding small perturbations to images
         tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
         outputs = net1(Variable(tempInputs))
-        # outputs = outputs / temper
+        # outputs = net1(Variable(inputs.data))
+        outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
         nnOutputs = nnOutputs[0]
-        nnOutputs = nnOutputs - np.max(nnOutputs)
+        # nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         g2.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
         if j % 100 == 99:

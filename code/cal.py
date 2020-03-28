@@ -61,16 +61,16 @@ def test(nnName, dataName, CUDA_DEVICE, epsilon, temperature):
     if dataName != "Uniform" and dataName != "Gaussian":
         testsetout = torchvision.datasets.ImageFolder("../../data/{}".format(dataName), transform=transform)
         testloaderOut = torch.utils.data.DataLoader(testsetout, batch_size=1,
-                                                    shuffle=False, num_workers=8)
+                                                    shuffle=False, num_workers=4)
 
     if nnName == "densenet10" or nnName == "wideresnet10":
         testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
         testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
-                                                   shuffle=False, num_workers=8)
+                                                   shuffle=False, num_workers=4)
     if nnName == "densenet100" or nnName == "wideresnet100":
         testset = torchvision.datasets.CIFAR100(root='../../data', train=False, download=True, transform=transform)
         testloaderIn = torch.utils.data.DataLoader(testset, batch_size=1,
-                                                   shuffle=False, num_workers=8)
+                                                   shuffle=False, num_workers=4)
 
     if dataName == "Gaussian":
         d.testGaussian(net1, criterion, CUDA_DEVICE, testloaderIn, testloaderIn, nnName, dataName, epsilon, temperature)

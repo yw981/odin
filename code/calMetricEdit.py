@@ -113,57 +113,6 @@ def auroc(name):
     # AUROC:                       95.4%              98.4%
     return cal_auroc('./softmax_scores/confidence_Base_In.txt', './softmax_scores/confidence_Base_Out.txt'), \
            cal_auroc('./softmax_scores/confidence_Our_In.txt', './softmax_scores/confidence_Our_Out.txt')
-    # T = 1
-    # cifar = np.loadtxt('./softmax_scores/confidence_Base_In.txt', delimiter=',')
-    # other = np.loadtxt('./softmax_scores/confidence_Base_Out.txt', delimiter=',')
-    # # if name == "CIFAR-10":
-    # #     start = 0.1
-    # #     end = 1
-    # # if name == "CIFAR-100":
-    # #     start = 0.01
-    # #     end = 1
-    # # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
-    # Y1 = other[:, 2]
-    # X1 = cifar[:, 2]
-    # start = min(np.min(X1), np.min(Y1))
-    # end = max(np.max(X1), np.max(Y1))
-    # print('auroc in', start, ',', end)
-    # gap = (end - start) / 100000
-    # aurocBase = 0.0
-    # fprTemp = 1.0
-    # for delta in np.arange(start, end, gap):
-    #     tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
-    #     fpr = np.sum(np.sum(Y1 > delta)) / np.float(len(Y1))
-    #     aurocBase += (-fpr + fprTemp) * tpr
-    #     fprTemp = fpr
-    # aurocBase += fpr * tpr
-    # # calculate our algorithm
-    # T = 1000
-    # cifar = np.loadtxt('./softmax_scores/confidence_Our_In.txt', delimiter=',')
-    # other = np.loadtxt('./softmax_scores/confidence_Our_Out.txt', delimiter=',')
-    # # if name == "CIFAR-10":
-    # #     start = 0.1
-    # #     end = 0.12
-    # # if name == "CIFAR-100":
-    # #     start = 0.01
-    # #     end = 0.0104
-    #
-    # # f = open("./{}/{}/T_{}.txt".format(nnName, dataName, T), 'w')
-    # Y1 = other[:, 2]
-    # X1 = cifar[:, 2]
-    # start = min(np.min(X1), np.min(Y1))
-    # end = max(np.max(X1), np.max(Y1))
-    # print('auroc out', start, ',', end)
-    # gap = (end - start) / 100000
-    # aurocNew = 0.0
-    # fprTemp = 1.0
-    # for delta in np.arange(start, end, gap):
-    #     tpr = np.sum(np.sum(X1 >= delta)) / np.float(len(X1))
-    #     fpr = np.sum(np.sum(Y1 >= delta)) / np.float(len(Y1))
-    #     aurocNew += (-fpr + fprTemp) * tpr
-    #     fprTemp = fpr
-    # aurocNew += fpr * tpr
-    # return aurocBase, aurocNew
 
 
 def auprIn(name):
@@ -309,6 +258,31 @@ def detection(name):
         errorNew = np.minimum(errorNew, (tpr + error2) / 2.0)
 
     return errorBase, errorNew
+
+
+def cal_metric(in_file_path, out_file_path):
+    in_data = np.loadtxt(in_file_path, delimiter=',')
+    out_data = np.loadtxt(out_file_path, delimiter=',')
+    in_softmax_scores = in_data[:, 2]
+    out_softmax_scores = out_data[:, 2]
+    start = min(np.min(in_softmax_scores), np.min(out_softmax_scores))
+    end = max(np.max(in_softmax_scores), np.max(out_softmax_scores))
+    # print('auroc in', start, ',', end)
+    gap = (end - start) / 100000
+    # tpr95
+
+    aurocValue = 0.0
+    fprTemp = 1.0
+    for delta in np.arange(start, end, gap):
+        # tpr95
+
+
+        tpr = np.sum(np.sum(in_softmax_scores >= delta)) / np.float(len(in_softmax_scores))
+        fpr = np.sum(np.sum(out_softmax_scores > delta)) / np.float(len(out_softmax_scores))
+        aurocValue += (-fpr + fprTemp) * tpr
+        fprTemp = fpr
+    aurocValue += fpr * tpr
+    return aurocValue
 
 
 def metric(nn, data):
