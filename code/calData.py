@@ -28,6 +28,8 @@ from scipy import misc
 
 def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dataName, noiseMagnitude1, temper):
     t0 = time.time()
+    TEMPR = True
+    GRAD = True
     f1 = open("./softmax_scores/confidence_Base_In.txt", 'w')
     f2 = open("./softmax_scores/confidence_Base_Out.txt", 'w')
     g1 = open("./softmax_scores/confidence_Our_In.txt", 'w')
@@ -44,6 +46,8 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
 
         inputs = Variable(images.cuda(CUDA_DEVICE), requires_grad=True)
         outputs = net1(inputs)
+        # print(outputs)
+        # exit(0)
 
         # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
         nnOutputs = outputs.data.cpu()
@@ -58,39 +62,42 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         # [4.6807846e-09 6.4017187e-09 6.8986878e-08 9.9999988e-01 1.0810218e-09
         #  1.7836784e-08 7.8857010e-09 2.6739716e-10 3.1237637e-10 3.8250875e-11]
 
-        nnOutputs = nnOutputs - np.max(nnOutputs)
+        # nnOutputs = nnOutputs - np.max(nnOutputs)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         f1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
-        # Using temperature scaling
-        outputs = outputs / temper
+        if TEMPR:
+            # Using temperature scaling 有细微作用
+            outputs = outputs / temper
 
-        # Calculating the perturbation we need to add, that is,
-        # the sign of gradient of cross entropy loss w.r.t. input
-        maxIndexTemp = np.argmax(nnOutputs)
-        # print(maxIndexTemp)
-        labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
-        # print(labels)
-        # labels = torch.from_numpy(maxIndexTemp)
-        loss = criterion(outputs, labels)
-        loss.backward()
+        if GRAD:
+            # Calculating the perturbation we need to add, that is,
+            # the sign of gradient of cross entropy loss w.r.t. input
+            maxIndexTemp = np.argmax(nnOutputs)
+            # print(maxIndexTemp)
+            labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
+            # print(labels)
+            # labels = torch.from_numpy(maxIndexTemp)
+            loss = criterion(outputs, labels)
+            loss.backward()
 
-        # Normalizing the gradient to binary in {0, 1}
-        gradient = torch.ge(inputs.grad.data, 0)
-        gradient = (gradient.float() - 0.5) * 2
-        # print(inputs.grad.data)
-        # print(gradient.size())
-        # print(gradient)
-        # Normalizing the gradient to the same space of image
-        gradient[0][0] = (gradient[0][0]) / (63.0 / 255.0)
-        gradient[0][1] = (gradient[0][1]) / (62.1 / 255.0)
-        gradient[0][2] = (gradient[0][2]) / (66.7 / 255.0)
-        # Adding small perturbations to images
-        # add函数的规则 torch.add(input, value=1, other, out=None) out=input+value×other
-        tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
-        outputs = net1(Variable(tempInputs))
-        # outputs = net1(Variable(inputs.data))
-        outputs = outputs / temper
+            # Normalizing the gradient to binary in {0, 1}
+            gradient = torch.ge(inputs.grad.data, 0)
+            gradient = (gradient.float() - 0.5) * 2
+            # print(inputs.grad.data)
+            # print(gradient.size())
+            # print(gradient)
+            # Normalizing the gradient to the same space of image
+            gradient[0][0] = (gradient[0][0]) / (63.0 / 255.0)
+            gradient[0][1] = (gradient[0][1]) / (62.1 / 255.0)
+            gradient[0][2] = (gradient[0][2]) / (66.7 / 255.0)
+            # Adding small perturbations to images
+            # add函数的规则 torch.add(input, value=1, other, out=None) out=input+value×other
+            tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
+            outputs = net1(Variable(tempInputs))
+            # outputs = net1(Variable(inputs.data))
+            if TEMPR:
+                outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
@@ -106,6 +113,7 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
 
         if j == N - 1: break
 
+    # 上面是处理In样本，下面是处理Out样本，若消融实验需要上下同步处理
     t0 = time.time()
     print("Processing out-of-distribution images")
     ###################################Out-of-Distributions#####################################
@@ -125,28 +133,31 @@ def testData(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, dat
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs))
         f2.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs)))
 
-        # Using temperature scaling
-        outputs = outputs / temper
+        if TEMPR:
+            # Using temperature scaling
+            outputs = outputs / temper
 
-        # Calculating the perturbation we need to add, that is,
-        # the sign of gradient of cross entropy loss w.r.t. input
-        maxIndexTemp = np.argmax(nnOutputs)
-        labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
-        loss = criterion(outputs, labels)
-        loss.backward()
+        if GRAD:
+            # Calculating the perturbation we need to add, that is,
+            # the sign of gradient of cross entropy loss w.r.t. input
+            maxIndexTemp = np.argmax(nnOutputs)
+            labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(CUDA_DEVICE))
+            loss = criterion(outputs, labels)
+            loss.backward()
 
-        # Normalizing the gradient to binary in {0, 1}
-        gradient = (torch.ge(inputs.grad.data, 0))
-        gradient = (gradient.float() - 0.5) * 2
-        # Normalizing the gradient to the same space of image
-        gradient[0][0] = (gradient[0][0]) / (63.0 / 255.0)
-        gradient[0][1] = (gradient[0][1]) / (62.1 / 255.0)
-        gradient[0][2] = (gradient[0][2]) / (66.7 / 255.0)
-        # Adding small perturbations to images
-        tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
-        outputs = net1(Variable(tempInputs))
-        # outputs = net1(Variable(inputs.data))
-        outputs = outputs / temper
+            # Normalizing the gradient to binary in {0, 1}
+            gradient = (torch.ge(inputs.grad.data, 0))
+            gradient = (gradient.float() - 0.5) * 2
+            # Normalizing the gradient to the same space of image
+            gradient[0][0] = (gradient[0][0]) / (63.0 / 255.0)
+            gradient[0][1] = (gradient[0][1]) / (62.1 / 255.0)
+            gradient[0][2] = (gradient[0][2]) / (66.7 / 255.0)
+            # Adding small perturbations to images
+            tempInputs = torch.add(inputs.data, -noiseMagnitude1, gradient)
+            outputs = net1(Variable(tempInputs))
+            # outputs = net1(Variable(inputs.data))
+            if TEMPR:
+                outputs = outputs / temper
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
@@ -221,7 +232,7 @@ def testGaussian(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName,
 
 
 
-        ########################################Out-of-Distribution######################################
+            ########################################Out-of-Distribution######################################
     print("Processing out-of-distribution images")
     for j, data in enumerate(testloader):
         if j < 1000: continue
@@ -339,7 +350,7 @@ def testUni(net1, criterion, CUDA_DEVICE, testloader10, testloader, nnName, data
 
 
 
-        ########################################Out-of-Distribution######################################
+            ########################################Out-of-Distribution######################################
     print("Processing out-of-distribution images")
     for j, data in enumerate(testloader):
         if j < 1000: continue
