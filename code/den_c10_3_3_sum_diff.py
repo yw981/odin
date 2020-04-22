@@ -109,12 +109,12 @@ def calculate_softmax_score_diff(tag, softmax_result, origin):
     return diff_score
 
 
-def calculate_out_diff_scores(key, origin_out_result):
+def calculate_out_diff_scores(tag, origin_out_result):
     out_diff_scores = []
 
     for i in range(10):
-        result = np.load(RESULT_DIR + '/densenet_%s_%d.npy' % (key, i))
-        out_diff_score = calculate_softmax_score_diff('%s %d' % (key, i), result, origin_out_result)
+        result = np.load(RESULT_DIR + '/densenet_imagenet_%d.npy' % i)
+        out_diff_score = calculate_softmax_score_diff('imagenet %d' % i, result, origin_out_result)
         out_diff_scores.append(out_diff_score)
 
     return np.array(out_diff_scores)
@@ -141,36 +141,100 @@ def evaluate_diff_score(tag, in_data, out_data, is_diff=False):
                             is_diff) * 100))
 
 
-# 测试
+# 求和区分，图像经过所有变换后，所有变换的变换值求和累积，再对比计算
 if __name__ == "__main__":
-    # transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize((125.3 / 255, 123.0 / 255, 113.9 / 255), (63.0 / 255, 62.1 / 255.0, 66.7 / 255.0)),
-    # ])
-    # testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
-    # test_loader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
-    # _, labels = next(iter(test_loader))
-    # labels = labels.numpy()
+    L = 10
 
     origin_in_result = np.load(RESULT_DIR + '/densenet_in.npy')
+    print(origin_in_result.shape)
     # calculate_softmax_score_diff('in', origin_in_result, origin_in_result)
     in_diff_scores = []
-    for i in range(10):
-        result = np.load(RESULT_DIR + '/densenet_in_%d.npy' % i)
-        in_diff_score = calculate_softmax_score_diff('cifar10 %d' % i, result, origin_in_result)
-        in_diff_scores.append(in_diff_score)
+    in_results = []
+    for i in range(L):
+        in_result = np.load(RESULT_DIR + '/densenet_in_%d.npy' % i)
+        # 目前版本值中已经softmax过，待改
+        in_results.append(in_result)
 
-    in_diff_scores = np.array(in_diff_scores)
+    in_results = np.array(in_results)
+    # print(in_results.shape)
+    origin_max_scores = np.max(origin_in_result, axis=1)
+    origin_max_indices = np.argmax(origin_in_result, axis=1)
 
+    in_sum_score = np.zeros(origin_max_scores.shape)
+    # print(origin_max_indices)
+    for i in range(L):
+        # print(in_results[i].shape)
+        # print(np.sum(in_results[i][0]))
+
+        # 先算origin的，原始未经变换的结果
+
+        # 对应的得分
+        cor_scores = in_results[i][tuple(np.arange(in_results[i].shape[0])), tuple(origin_max_indices)]
+        # diff_score = np.abs(cor_scores - origin_max_scores)
+        diff_score = cor_scores - origin_max_scores
+        # print('in ',diff_score[0:5])
+        in_sum_score += diff_score
+
+    print(in_sum_score[0:5])
+    # print(in_sum_score.shape)
+    # dsg0 = sum_score[sum_score > 0]
+    # print('in ',i)
+    # print(dsg0.shape)
+    # print(np.sum(dsg0))
+    # dsl0 = sum_score[sum_score < 0]
+    # print(dsl0.shape)
+    # print(np.sum(dsl0))
+
+    # 原计划，按逻辑diff_score = origin_max_scores - cor_scores，分数越低（可为负的）越好（越in），为计算AUROC取反了
+    # 统一取绝对值的相反数，最大0最好（越in），越小越out
+    #
+    #
+    #     in_diff_score = calculate_softmax_score_diff('cifar10 %d' % i, result, origin_in_result)
+    #     in_diff_scores.append(in_diff_score)
+    #
+    # in_diff_scores = np.array(in_diff_scores)
+    #
     for key in ['imagenet', 'gaussian', 'uniform']:
         origin_out_result = np.load(RESULT_DIR + '/densenet_%s.npy' % key)
 
-        # arr_stat('in', origin_in_result)
-        # arr_stat('out', origin_out_result)
+        out_results = []
+        for i in range(L):
+            out_result = np.load(RESULT_DIR + '/densenet_%s_%d.npy' % (key, i))
+            # 目前版本值中已经softmax过，待改
+            out_results.append(out_result)
 
-        evaluate_diff_score('Baseline ', origin_in_result, origin_out_result)
+        out_results = np.array(out_results)
 
-        out_diff_scores = calculate_out_diff_scores(key, origin_out_result)
+        # 考虑全部变换，不找最大的一个了？？
+        out_max_scores = np.max(origin_out_result, axis=1)
+        out_max_indices = np.argmax(origin_out_result, axis=1)
+        out_sum_score = np.zeros(out_max_scores.shape)
+        for i in range(L):
+            # print(in_results[i].shape)
+            # print(np.sum(in_results[i][0]))
 
-        for i in range(10):
-            evaluate_diff_score('%s %d' % (key, i), in_diff_scores[i], out_diff_scores[i], True)
+            # 先算origin的，原始未经变换的结果
+
+            # 对应的得分
+            cor_scores = out_results[i][tuple(np.arange(out_results[i].shape[0])), tuple(out_max_indices)]
+            diff_score = cor_scores - out_max_scores
+            # diff_score = np.abs(cor_scores - out_max_scores)
+            # print(key,'out ',diff_score[0:5])
+            out_sum_score += diff_score
+
+        print(out_sum_score[0:5])
+        evaluate_diff_score(key+' sum ', -in_sum_score.reshape((in_sum_score.shape[0],1)), -out_sum_score.reshape((in_sum_score.shape[0],1)))
+    #         dsg0 = diff_score[diff_score > 0]
+    #         print('out ',key,i)
+    #         print(dsg0.shape)
+    #         print(np.sum(dsg0))
+    #         dsl0 = diff_score[diff_score < 0]
+    #         print(dsl0.shape)
+    #         print(np.sum(dsl0))
+
+    #
+    #
+    # out_diff_scores = calculate_out_diff_scores(key, origin_out_result)
+    #
+    # for i in range(10):
+    #     evaluate_diff_score('%s %d' % (key, i), in_diff_scores[i], out_diff_scores[i], True)

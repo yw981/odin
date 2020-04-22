@@ -10,27 +10,31 @@ from func import RESULT_DIR
 
 CUDA_DEVICE = 0
 
-def test_save(model, data, label):
+
+def test_save(model, data, label, temperature=-1,softmax_flag = True):
     # print(data.size())
     if type(data) is torch.FloatTensor:
         data = Variable(data.cuda(CUDA_DEVICE))
 
     data = Variable(data.data.cpu().cuda(CUDA_DEVICE))
     output = model.forward(data)
-    output = F.softmax(output, dim=1)
+    if temperature > 0:
+        output = output / temperature
+    if softmax_flag:
+        output = F.softmax(output, dim=1)
     np.save(RESULT_DIR + '/%s.npy' % label, output.data.cpu().numpy())
     print(label, ' saved')
 
 
-def test_origin_and_affines(affine_params, model, data, tag):
+def test_origin_and_affines(affine_params, model, data, tag, temperature=-1):
     # data = data.to(device)
-    test_save(model, data, tag)
+    test_save(model, data, tag, temperature)
     for i in range(10):
         label = '%s_%d' % (tag, i)
         affine_param = torch.from_numpy(affine_params[i]).float()
         grid = F.affine_grid(affine_param.repeat(data.size()[0], 1, 1), data.size())
         trans_data = F.grid_sample(data, grid)
-        test_save(model, trans_data, label)
+        test_save(model, trans_data, label, temperature)
 
 
 def main():
@@ -54,22 +58,24 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
     data, _ = next(iter(test_loader))
+    temperature = -1
+
     tag = 'densenet_in'
-    test_origin_and_affines(affine_params, model, data, tag)
+    test_origin_and_affines(affine_params, model, data, tag, temperature)
 
     testsetout = torchvision.datasets.ImageFolder("../../data/Imagenet", transform=transform)
     test_loader = torch.utils.data.DataLoader(testsetout, batch_size=100, shuffle=False, num_workers=2)
     data, _ = next(iter(test_loader))
     tag = 'densenet_imagenet'
-    test_origin_and_affines(affine_params, model, data, tag)
+    test_origin_and_affines(affine_params, model, data, tag, temperature)
 
     data = torch.from_numpy(np.random.randn(100, 3, 32, 32)).float()
     tag = 'densenet_gaussian'
-    test_origin_and_affines(affine_params, model, data, tag)
+    test_origin_and_affines(affine_params, model, data, tag, temperature)
 
     data = torch.from_numpy(np.random.uniform(size=(100, 3, 32, 32))).float()
     tag = 'densenet_uniform'
-    test_origin_and_affines(affine_params, model, data, tag)
+    test_origin_and_affines(affine_params, model, data, tag, temperature)
 
 
 if __name__ == '__main__':

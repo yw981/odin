@@ -7,10 +7,12 @@ import time
 
 
 def cal_scores_save(base_path, new_path, model, criterion, device, test_loader, tag='Test'):
+    use_temperature = True
+    use_gradient = True
     f1 = open(base_path, 'w')
     g1 = open(new_path, 'w')
     temper = 1000
-    noiseMagnitude1 = 0.0014
+    noiseMagnitude1 = 0.00007
 
     print('Process ', tag, ' temperature = ', temper, ' epsilon = ', noiseMagnitude1)
 
@@ -19,68 +21,76 @@ def cal_scores_save(base_path, new_path, model, criterion, device, test_loader, 
     idx = 0
 
     for data, target in test_loader:
-        # 为适配python3.5做处理
-        data = Variable(data.cuda(0), requires_grad=True)
+        data = Variable(data.cuda(0), requires_grad=True)  # for py 3.5
+        # data = data.to(device).requires_grad_() # for py 3.6+
 
         outputs = model(data)
+        # print(outputs)
         # outputs = torch.tensor(
         #     [[-1.2211, -0.9080, 1.4694, 17.9587, -2.6866, 0.1167, -0.6995, -4.0835, -3.9281, -6.0281]]).to(device)
         # outputs.requires_grad_()
 
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
-        # nnOutputs = np.array()
+        # print(np.argmax(nnOutputs, axis=1))
+        # print(target)
 
         # 这里就是在softmax 减去最大值，让所有数字都变负数，最大得分0，用处不大，去掉
         # nnOutputs = nnOutputs - np.max(nnOutputs, axis=1, keepdims=True)
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs), axis=1, keepdims=True)
         for i in range(nnOutputs.shape[0]):
-            # print("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs[i])))
+            # print("{}, {}, {}".format(temper, noiseMagnitude1, np.max(nnOutputs[i])))
             f1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs[i])))
 
-        # Using temperature scaling
-        outputs = outputs / temper
+        if use_temperature:
+            # Using temperature scaling
+            outputs = outputs / temper
 
-        # the sign of gradient of cross entropy loss w.r.t. input
-        maxIndexTemp = np.argmax(nnOutputs, axis=1)
-        # print(maxIndexTemp)
-        # print(target)
-        # labels = torch.LongTensor(maxIndexTemp)
-        labels = Variable(torch.LongTensor(maxIndexTemp)).cuda(0)
-        # labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(0))
-        # print(labels)
+        if use_gradient:
+            # the sign of gradient of cross entropy loss w.r.t. input
+            maxIndexTemp = np.argmax(nnOutputs, axis=1)
+            # print(maxIndexTemp)
+            # print(target)
 
-        loss = criterion(outputs, labels)
-        loss.backward()
+            # labels = torch.LongTensor(maxIndexTemp).to(device)
+            labels = Variable(torch.LongTensor(maxIndexTemp)).cuda(0)   # for py 3.5
 
-        # Normalizing the gradient to binary in {0, 1}
-        gradient = torch.ge(data.grad, 0)
-        gradient = (gradient.float() - 0.5) * 2
-        # print(inputs.grad.data)
-        # print(gradient.size())
-        # print(torch.mean(gradient))
-        # Normalizing the gradient to the same space of image
-        gradient[:, 0, :, :] = gradient[:, 0, :, :] / (63.0 / 255.0)
-        gradient[:, 1, :, :] = gradient[:, 1, :, :] / (62.1 / 255.0)
-        gradient[:, 2, :, :] = gradient[:, 2, :, :] / (66.7 / 255.0)
-        # print(torch.mean(gradient))
-        # Adding small perturbations to images
-        # add函数的规则 torch.add(input, value=1, other, out=None) out=input+value×other
-        tempInputs = torch.add(data, -noiseMagnitude1, gradient)
-        outputs = model(tempInputs)
-        # print('output')
-        # outputs = net1(Variable(inputs.data))
-        outputs = outputs / temper
+            # labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(0))
+            # print(labels)
+
+            loss = criterion(outputs, labels)
+            loss.backward()
+
+            # Normalizing the gradient to binary in {0, 1}
+            gradient = torch.ge(data.grad, 0)
+            gradient = (gradient.float() - 0.5) * 2
+            # print(inputs.grad.data)
+            # print(torch.mean(gradient))
+            # Normalizing the gradient to the same space of image
+            gradient[:, 0, :, :] = gradient[:, 0, :, :] / (63.0 / 255.0)
+            gradient[:, 1, :, :] = gradient[:, 1, :, :] / (62.1 / 255.0)
+            gradient[:, 2, :, :] = gradient[:, 2, :, :] / (66.7 / 255.0)
+            # print(gradient)
+            # Adding small perturbations to images
+            # add函数的规则 torch.add(input, value=1, other, out=None) out=input+value×other
+            tempInputs = torch.add(data, -noiseMagnitude1, gradient)
+            outputs = model(tempInputs)
+            # print('output')
+            # outputs = net1(Variable(inputs.data))
+            if use_temperature:
+                outputs = outputs / temper
+
         # Calculating the confidence after adding perturbations
         nnOutputs = outputs.data.cpu()
         nnOutputs = nnOutputs.numpy()
-        # nnOutputs = nnOutputs - np.max(nnOutputs, axis=1, keepdims=True)
+        # print(np.max(nnOutputs, axis=1))
         nnOutputs = np.exp(nnOutputs) / np.sum(np.exp(nnOutputs), axis=1, keepdims=True)
         for i in range(nnOutputs.shape[0]):
+            # print(nnOutputs[i])
             # print("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs[i])))
             g1.write("{}, {}, {}\n".format(temper, noiseMagnitude1, np.max(nnOutputs[i])))
 
-        if idx % 50 == 0 or (idx + 1) == len(test_loader):
+        if idx % 10 == 0 or (idx + 1) == len(test_loader):
             print("{:4}/{:4} batch processed, {:.1f} seconds used.".format(idx, len(test_loader), time.time() - t0))
             t0 = time.time()
         idx += 1
@@ -93,7 +103,7 @@ if __name__ == '__main__':
     criterion = torch.nn.CrossEntropyLoss()
 
     # kwargs = {'num_workers': 4, 'pin_memory': True} if use_cuda else {}
-    batch_size = 20
+    batch_size = 100
     num_worker = 4
 
     # 模型！
