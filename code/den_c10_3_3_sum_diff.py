@@ -157,10 +157,12 @@ if __name__ == "__main__":
 
     in_results = np.array(in_results)
     # print(in_results.shape)
-    origin_max_scores = np.max(origin_in_result, axis=1)
-    origin_max_indices = np.argmax(origin_in_result, axis=1)
+    in_max_scores = np.max(origin_in_result, axis=1)
+    # arr_stat('in max ', in_max_scores)
+    # print(in_max_scores[:20])
+    in_max_indices = np.argmax(origin_in_result, axis=1)
 
-    in_sum_score = np.zeros(origin_max_scores.shape)
+    in_sum_score = np.zeros(in_max_scores.shape)
     # print(origin_max_indices)
     for i in range(L):
         # print(in_results[i].shape)
@@ -169,13 +171,14 @@ if __name__ == "__main__":
         # 先算origin的，原始未经变换的结果
 
         # 对应的得分
-        cor_scores = in_results[i][tuple(np.arange(in_results[i].shape[0])), tuple(origin_max_indices)]
-        # diff_score = np.abs(cor_scores - origin_max_scores)
-        diff_score = cor_scores - origin_max_scores
+        cor_scores = in_results[i][tuple(np.arange(in_results[i].shape[0])), tuple(in_max_indices)]
+        diff_score = np.abs(cor_scores - in_max_scores)
+        # diff_score = cor_scores - in_max_scores
         # print('in ',diff_score[0:5])
         in_sum_score += diff_score
 
-    print(in_sum_score[0:5])
+    # print('in sum ', in_sum_score[:10])
+    arr_stat('in sum', in_sum_score)
     # print(in_sum_score.shape)
     # dsg0 = sum_score[sum_score > 0]
     # print('in ',i)
@@ -207,6 +210,9 @@ if __name__ == "__main__":
 
         # 考虑全部变换，不找最大的一个了？？
         out_max_scores = np.max(origin_out_result, axis=1)
+        # arr_stat('out max ', out_max_scores)
+        # print(out_max_scores[:20])
+        # exit(0)
         out_max_indices = np.argmax(origin_out_result, axis=1)
         out_sum_score = np.zeros(out_max_scores.shape)
         for i in range(L):
@@ -217,13 +223,15 @@ if __name__ == "__main__":
 
             # 对应的得分
             cor_scores = out_results[i][tuple(np.arange(out_results[i].shape[0])), tuple(out_max_indices)]
-            diff_score = cor_scores - out_max_scores
-            # diff_score = np.abs(cor_scores - out_max_scores)
+            # diff_score = cor_scores - out_max_scores
+            diff_score = np.abs(cor_scores - out_max_scores)
             # print(key,'out ',diff_score[0:5])
             out_sum_score += diff_score
 
-        print(out_sum_score[0:5])
-        evaluate_diff_score(key+' sum ', -in_sum_score.reshape((in_sum_score.shape[0],1)), -out_sum_score.reshape((in_sum_score.shape[0],1)))
+        # print('out sum', out_sum_score[:10])
+        arr_stat('out sum', out_sum_score)
+        evaluate_diff_score(key + ' sum ', -in_sum_score.reshape((in_sum_score.shape[0], 1)),
+                            -out_sum_score.reshape((in_sum_score.shape[0], 1)))
     #         dsg0 = diff_score[diff_score > 0]
     #         print('out ',key,i)
     #         print(dsg0.shape)

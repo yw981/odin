@@ -1,6 +1,6 @@
 import numpy as np
 
-RESULT_DIR = '../result'
+RESULT_DIR = '../result_no_softmax'
 # RESULT_DIR = '../result_large'
 
 def print5(tag, arr):

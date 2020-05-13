@@ -7,7 +7,7 @@ def tpr95(in_data, out_data, is_diff=False):
     # calculate the falsepositive error when tpr is 95%
     start = np.min(np.array([in_data, out_data]))
     end = np.max(np.array([in_data, out_data]))
-    gap = (end - start) / 100000
+    gap = (end - start) / 10000
     Y1 = out_data if is_diff else np.max(out_data, axis=1)
     X1 = in_data if is_diff else np.max(in_data, axis=1)
     total = 0.0
@@ -29,7 +29,7 @@ def auroc(in_data, out_data, is_diff=False):
     start = np.min(np.array([in_data, out_data]))
     end = np.max(np.array([in_data, out_data]))
 
-    gap = (end - start) / 100000
+    gap = (end - start) / 10000
     Y1 = out_data if is_diff else np.max(out_data, axis=1)
     X1 = in_data if is_diff else np.max(in_data, axis=1)
 
@@ -50,7 +50,7 @@ def auprIn(in_data, out_data, is_diff=False):
     start = np.min(np.array([in_data, out_data]))
     end = np.max(np.array([in_data, out_data]))
 
-    gap = (end - start) / 100000
+    gap = (end - start) / 10000
     Y1 = out_data if is_diff else np.max(out_data, axis=1)
     X1 = in_data if is_diff else np.max(in_data, axis=1)
     precisionVec = []
@@ -77,7 +77,7 @@ def detection(in_data, out_data, is_diff=False):
     start = np.min(np.array([in_data, out_data]))
     end = np.max(np.array([in_data, out_data]))
 
-    gap = (end - start) / 100000
+    gap = (end - start) / 10000
     # print(out_data.shape)
     # arr_stat('out data ', out_data)
     # 原著只有最高分进去比了，此处已修改
@@ -120,7 +120,7 @@ def calculate_out_diff_scores(key, origin_out_result):
     return np.array(out_diff_scores)
 
 
-def evaluate_diff_score(tag, in_data, out_data, is_diff=False):
+def evaluate_score(tag, in_data, out_data, is_diff=False):
     # print(tag, ' fpr at tpr95 ', tpr95(in_data, out_data))
     # print(tag, ' error ', detection(in_data, out_data))
     # print(tag, ' AUROC ', auroc(in_data, out_data))
@@ -168,9 +168,12 @@ if __name__ == "__main__":
         # arr_stat('in', origin_in_result)
         # arr_stat('out', origin_out_result)
 
-        evaluate_diff_score('Baseline ', origin_in_result, origin_out_result)
+        evaluate_score('Baseline ', origin_in_result, origin_out_result)
 
         out_diff_scores = calculate_out_diff_scores(key, origin_out_result)
 
         for i in range(10):
-            evaluate_diff_score('%s %d' % (key, i), in_diff_scores[i], out_diff_scores[i], True)
+            print('----------')
+            evaluate_score('%s %d' % (key, i), in_diff_scores[i], out_diff_scores[i], True)
+            arr_stat('in', in_diff_scores[i])
+            arr_stat('out', out_diff_scores[i])

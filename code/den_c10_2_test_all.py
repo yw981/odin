@@ -11,7 +11,7 @@ from func import RESULT_DIR
 CUDA_DEVICE = 0
 
 
-def test_save(model, data, label, temperature=-1,softmax_flag = True):
+def test_save(model, data, label, temperature=-1, softmax_flag=False):
     # print(data.size())
     if type(data) is torch.FloatTensor:
         data = Variable(data.cuda(CUDA_DEVICE))
