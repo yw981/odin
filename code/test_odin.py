@@ -12,7 +12,7 @@ def cal_scores_save(base_path, new_path, model, criterion, device, test_loader, 
     f1 = open(base_path, 'w')
     g1 = open(new_path, 'w')
     temper = 1000
-    noiseMagnitude1 = 0.00007
+    noiseMagnitude1 = 0.0014
 
     print('Process ', tag, ' temperature = ', temper, ' epsilon = ', noiseMagnitude1)
 
@@ -53,7 +53,7 @@ def cal_scores_save(base_path, new_path, model, criterion, device, test_loader, 
             # print(target)
 
             # labels = torch.LongTensor(maxIndexTemp).to(device)
-            labels = Variable(torch.LongTensor(maxIndexTemp)).cuda(0)   # for py 3.5
+            labels = Variable(torch.LongTensor(maxIndexTemp)).cuda(0)  # for py 3.5
 
             # labels = Variable(torch.LongTensor(np.array([maxIndexTemp])).cuda(0))
             # print(labels)
@@ -62,8 +62,11 @@ def cal_scores_save(base_path, new_path, model, criterion, device, test_loader, 
             loss.backward()
 
             # Normalizing the gradient to binary in {0, 1}
-            gradient = torch.ge(data.grad, 0)
-            gradient = (gradient.float() - 0.5) * 2
+            # gradient = torch.ge(data.grad, 0)
+            # gradient = (gradient.float() - 0.5) * 2
+            gradient = data.grad * 200000
+            # print('grad ', torch.max(gradient), ' ', torch.min(gradient))
+
             # print(inputs.grad.data)
             # print(torch.mean(gradient))
             # Normalizing the gradient to the same space of image
